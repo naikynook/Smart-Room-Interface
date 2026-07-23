@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Smart Room Interface</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #ffffff;
+        font-family: "Segoe UI", system-ui, sans-serif;
+      }
+
+      #canvas-container {
+        width: 100%;
+        height: 100%;
+      }
+
+      canvas {
+        display: block;
+      }
+
+      #camera-feed {
+        position: fixed;
+        right: 12px;
+        bottom: 48px;
+        width: 160px;
+        border-radius: 8px;
+        opacity: 0.85;
+        z-index: 5;
+        background: #111;
+        transform: scaleX(-1);
+      }
+
+      .hint {
+        position: fixed;
+        bottom: 1.5rem;
+        left: 50%;
+        transform: translateX(-50%);
+        color: #666;
+        font-size: 0.85rem;
+        letter-spacing: 0.04em;
+        pointer-events: none;
+        user-select: none;
+        opacity: 0.7;
+        max-width: min(90vw, 42rem);
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="canvas-container"></div>
+    <video id="camera-feed" playsinline muted autoplay></video>
+    <p class="hint">Loading… then allow microphone and camera</p>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
