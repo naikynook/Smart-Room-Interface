@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { startVoiceWake } from "./voiceWake.js";
 import { speak as speakFn, stopSpeaking as stopSpeakingFn, speakTunnelGoodbye } from "./speechTalk.js";
+import { startCameraPreview, describeCameraError, wireCameraRetry } from "./camera.js";
 
 const PARTICLE_COUNT = 48000;
 const FACE_MODEL_URL = "/models/LeePerrySmith.glb";
@@ -809,6 +810,8 @@ const look = { yaw: 0, pitch: 0 };
 let vision = null;
 let visionBusy = false;
 let visionReady = false;
+let cameraPreview = null;
+let cameraOk = false;
 let voiceControl = null;
 
 let speak = speakFn;
@@ -848,6 +851,22 @@ window.addEventListener("pointermove", (e) => {
 
 function setHint(text) {
   if (hint) hint.textContent = text;
+}
+
+function voiceStatus(text) {
+  // Don't let mic status wipe a real camera failure message
+  if (!cameraOk && cameraPreview === null && /Listening/i.test(text)) {
+    return;
+  }
+  setHint(text);
+}
+
+async function ensureCamera() {
+  if (cameraOk && cameraPreview?.stream) return cameraPreview;
+  const result = await startCameraPreview(document.getElementById("camera-feed"));
+  cameraPreview = result;
+  cameraOk = true;
+  return result;
 }
 
 function isAwake() {
@@ -1008,45 +1027,81 @@ function animate() {
 
 animate();
 
+// Click the preview to enable/retry camera (works even if auto-start fails)
+wireCameraRetry(document.getElementById("camera-feed"), {
+  onSuccess: (result) => {
+    cameraPreview = result;
+    cameraOk = true;
+    setHint(
+      visionReady
+        ? 'Listening… say "hello smart room" · camera ready'
+        : 'Camera on · loading the rest…'
+    );
+  },
+  onError: (err) => {
+    cameraOk = false;
+    setHint(describeCameraError(err));
+  },
+});
+
 // ---------------------------------------------------------------------------
 // Load scan → front face mask → dense surface samples
 // ---------------------------------------------------------------------------
 const loader = new GLTFLoader();
 
+setHint("Loading face scan…");
+
 loader.load(
   FACE_MODEL_URL,
   (gltf) => {
-    const allTris = collectTriangles(gltf.scene);
-    const cropped = cropToFaceMask(allTris);
-    const faceTris = keepFrontShell(cropped);
+    try {
+      const allTris = collectTriangles(gltf.scene);
+      const cropped = cropToFaceMask(allTris);
+      const faceTris = keepFrontShell(cropped);
 
-    if (!faceTris.length) {
-      if (hint) hint.textContent = "Face crop removed all geometry.";
+      if (!faceTris.length) {
+        setHint("Face crop removed all geometry.");
+        return;
+      }
+
+      const { positions, normals, concavities } = sampleFaceSurface(
+        faceTris,
+        PARTICLE_COUNT
+      );
+      points = createParticleSystem(positions, normals, concavities);
+      scene.add(points);
+    } catch (err) {
+      console.error(err);
+      setHint("Failed to build particle face.");
       return;
     }
-
-    const { positions, normals, concavities } = sampleFaceSurface(faceTris, PARTICLE_COUNT);
-    points = createParticleSystem(positions, normals, concavities);
-    scene.add(points);
 
     voiceControl = startVoiceWake({
       onWake: wakeAvatar,
       onSleep: sleepAvatar,
       onSee: handleWhatDoYouSee,
       onDownload: handleDownloadDataset,
-      onStatus: setHint,
+      onStatus: voiceStatus,
       isAwake,
     });
 
-    setHint('Listening… say "hello smart room" · loading camera…');
+    setHint('Listening… say "hello smart room" · starting camera…');
 
-    // Lazy-load TensorFlow / OpenCV so the particle face can appear first
+    // Camera + vision AFTER the swirl is on screen so the page never looks "stuck"
     (async () => {
       try {
-        const [
-          { VisionSystem },
-          datasetMod,
-        ] = await Promise.all([
+        await ensureCamera();
+        setHint('Listening… say "hello smart room" · camera on · loading vision…');
+      } catch (err) {
+        console.error(err);
+        cameraOk = false;
+        setHint(
+          `${describeCameraError(err)} Click the black camera box to retry.`
+        );
+      }
+
+      try {
+        const [{ VisionSystem }, datasetMod] = await Promise.all([
           import("./vision.js"),
           import("./dataset.js"),
         ]);
@@ -1056,8 +1111,9 @@ loader.load(
         getDataset = datasetMod.getDataset;
 
         vision = new VisionSystem();
-        await vision.init();
+        await vision.init(cameraPreview || {});
         visionReady = true;
+        cameraOk = true;
 
         if (isAwake()) {
           setHint('Awake — ask "what do you see", or say "goodbye smart room"');
@@ -1067,7 +1123,9 @@ loader.load(
       } catch (err) {
         console.error(err);
         setHint(
-          'Camera unavailable — voice wake still works. Allow camera to enable vision.'
+          cameraOk
+            ? "Camera is on, but the vision model failed to load. Voice wake still works."
+            : `${describeCameraError(err)} Click the black camera box to retry.`
         );
       }
     })();

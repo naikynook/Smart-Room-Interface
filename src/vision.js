@@ -1,6 +1,6 @@
 /**
  * Vision pipeline:
- * - Webcam via getUserMedia
+ * - Reuses an existing webcam stream when possible
  * - COCO-SSD on WASM (no WebGL fight with Three.js)
  * - Reports the single best object in view
  */
@@ -8,6 +8,7 @@
 import * as tf from "@tensorflow/tfjs";
 import { setWasmPaths } from "@tensorflow/tfjs-backend-wasm";
 import * as cocoSsd from "@tensorflow-models/coco-ssd";
+import { startCameraPreview } from "./camera.js";
 
 const DETECT_W = 320;
 const DETECT_H = 240;
@@ -36,17 +37,28 @@ export class VisionSystem {
     this.detectCanvas = null;
     this.detectCtx = null;
     this.ready = false;
+    this.cameraReady = false;
   }
 
-  async init() {
-    this.video = document.getElementById("camera-feed");
-    if (!this.video) {
-      this.video = document.createElement("video");
-      this.video.id = "camera-feed";
-      this.video.playsInline = true;
-      this.video.muted = true;
-      this.video.autoplay = true;
-      document.body.appendChild(this.video);
+  /**
+   * Attach an already-running camera preview (from startCameraPreview).
+   */
+  attachCamera({ video, stream } = {}) {
+    this.video = video || document.getElementById("camera-feed");
+    this.stream = stream || this.video?.srcObject || null;
+    this.cameraReady = !!(this.video && this.stream);
+  }
+
+  async init({ video, stream } = {}) {
+    if (video || stream) {
+      this.attachCamera({ video, stream });
+    }
+
+    if (!this.cameraReady) {
+      const cam = await startCameraPreview(
+        document.getElementById("camera-feed")
+      );
+      this.attachCamera(cam);
     }
 
     this.canvas = document.createElement("canvas");
@@ -58,17 +70,6 @@ export class VisionSystem {
       willReadFrequently: true,
     });
 
-    this.stream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode: "user",
-        width: { ideal: 640 },
-        height: { ideal: 480 },
-        frameRate: { ideal: 15, max: 24 },
-      },
-      audio: false,
-    });
-    this.video.srcObject = this.stream;
-    await this.video.play();
     await yieldToPaint();
 
     try {
@@ -81,7 +82,7 @@ export class VisionSystem {
     }
     await yieldToPaint();
 
-    this.model = await cocoSsd.load({ base: "mobilenet_v2" });
+    this.model = await cocoSsd.load({ base: "lite_mobilenet_v2" });
     await yieldToPaint();
 
     this.detectCtx.fillStyle = "#777";
@@ -94,8 +95,8 @@ export class VisionSystem {
   }
 
   grabFrame() {
-    const w = this.video.videoWidth;
-    const h = this.video.videoHeight;
+    const w = this.video?.videoWidth;
+    const h = this.video?.videoHeight;
     if (!w || !h) return false;
 
     this.canvas.width = w;
@@ -105,9 +106,6 @@ export class VisionSystem {
     return true;
   }
 
-  /**
-   * Pick one best object and describe it.
-   */
   async analyze() {
     if (!this.ready || !this.video?.videoWidth) {
       throw new Error("Vision system is not ready yet.");
@@ -125,20 +123,16 @@ export class VisionSystem {
     const timestamp = Date.now();
     const frameArea = DETECT_W * DETECT_H;
 
-    // Prefer confident, reasonably sized detections
     const ranked = predictions
       .filter((p) => p.score >= 0.45)
       .map((p) => {
         const [, , bw, bh] = p.bbox;
         const area = (bw * bh) / frameArea;
-        // Score blends confidence with how much of the frame it fills
         const rank = p.score * 0.75 + Math.min(area, 0.5) * 0.5;
         return { ...p, area, rank };
       })
       .filter((p) => {
-        // Tiny junk boxes
         if (p.area < 0.01) return false;
-        // Person needs a bit more confidence to avoid empty-room FPs
         if (p.class === "person" && (p.score < 0.58 || p.area < 0.04)) {
           return false;
         }
@@ -173,6 +167,7 @@ export class VisionSystem {
 
   stop() {
     this.ready = false;
+    this.cameraReady = false;
     if (this.stream) {
       for (const track of this.stream.getTracks()) track.stop();
       this.stream = null;
