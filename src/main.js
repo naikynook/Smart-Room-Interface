@@ -5,7 +5,7 @@ import { speak as speakFn, stopSpeaking as stopSpeakingFn, speakTunnelGoodbye } 
 import { startCameraPreview, describeCameraError, wireCameraRetry } from "./camera.js";
 
 const PARTICLE_COUNT = 48000;
-const FACE_MODEL_URL = "/models/LeePerrySmith.glb";
+const FACE_MODEL_URL = `${import.meta.env.BASE_URL}models/LeePerrySmith.glb`;
 
 const container = document.getElementById("canvas-container");
 
