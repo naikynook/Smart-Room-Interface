@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Data Visualization — Smart Room</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/src/dataViz.css" />
+  </head>
+  <body>
+    <a class="back" href="./index.html">← Smart Room</a>
+
+    <div class="stage">
+      <header class="page-header">
+        <h1>Data Visualization</h1>
+        <p class="sub">
+          From the Racial Faces in the Wild dataset
+          (<span id="row-count">…</span> images)
+        </p>
+      </header>
+
+      <div id="sunburst" class="sunburst" aria-label="Zoomable sunburst"></div>
+
+      <div class="caption">
+        <p id="breadcrumb">Race → Gender → Age</p>
+        <p id="detail">Loading…</p>
+        <p class="hint-key">Click a ring to zoom · click the center to zoom out</p>
+      </div>
+    </div>
+
+    <script type="module" src="/src/dataViz.js"></script>
+  </body>
+</html>

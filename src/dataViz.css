@@ -1,0 +1,141 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  min-height: 100%;
+  background: #0b0c10;
+  color: #e8eaef;
+  font-family: "Outfit", "Segoe UI", system-ui, sans-serif;
+  overflow-x: hidden;
+}
+
+.back {
+  position: fixed;
+  top: 14px;
+  left: 14px;
+  z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.45rem 0.85rem;
+  background: rgba(22, 24, 32, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  color: #e8eaef;
+  text-decoration: none;
+  font-size: 0.82rem;
+  letter-spacing: 0.02em;
+}
+
+.back:hover {
+  border-color: rgba(255, 255, 255, 0.28);
+  background: rgba(30, 33, 44, 0.95);
+}
+
+.stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 5.25rem 1.5rem 4rem;
+  gap: 1.75rem;
+}
+
+.page-header {
+  text-align: center;
+  max-width: 36rem;
+  padding: 0 1rem;
+}
+
+.page-header h1 {
+  font-family: "Outfit", "Segoe UI", system-ui, sans-serif;
+  font-size: 1.55rem;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  margin-bottom: 0.35rem;
+  color: #f2f4f8;
+}
+
+.page-header .sub {
+  color: #9aa3b5;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  margin-bottom: 0;
+  font-weight: 400;
+}
+
+.sunburst {
+  width: min(94vw, 82vh, 860px);
+  flex-shrink: 0;
+  aspect-ratio: 1;
+}
+
+.sunburst svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  cursor: default;
+}
+
+.sunburst path {
+  stroke: #ffffff;
+  stroke-width: 1px;
+  stroke-linejoin: round;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.sunburst path:hover {
+  opacity: 0.9;
+}
+
+.sunburst text {
+  pointer-events: none;
+  fill: #f2f4f8;
+  font-size: 9px;
+  font-family: "Outfit", "Segoe UI", system-ui, sans-serif;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  stroke: none;
+}
+
+.caption {
+  text-align: center;
+  max-width: 28rem;
+  padding: 0.5rem 1rem 2rem;
+}
+
+#breadcrumb {
+  color: #9aa3b5;
+  font-size: 0.84rem;
+  line-height: 1.45;
+  margin-bottom: 0.45rem;
+}
+
+#detail {
+  color: #e8eaef;
+  font-size: 0.92rem;
+  font-weight: 500;
+  margin-bottom: 1.1rem;
+}
+
+.hint-key {
+  color: #6b7385;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+@media (max-width: 640px) {
+  .stage {
+    gap: 1.5rem;
+    padding-top: 4rem;
+  }
+
+  .page-header h1 {
+    font-size: 1.35rem;
+  }
+}
