@@ -41,7 +41,7 @@ body {
   flex-direction: column;
   align-items: center;
   padding: 5.25rem 1.5rem 4rem;
-  gap: 1.75rem;
+  gap: 3.25rem;
 }
 
 .page-header {
@@ -67,13 +67,34 @@ body {
   font-weight: 400;
 }
 
-.sunburst {
+.chart-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  gap: 0.85rem;
+}
+
+.chart-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: #f2f4f8;
+}
+
+.chart-lead {
+  color: #8b93a5;
+  font-size: 0.82rem;
+  margin-bottom: 0.35rem;
+}
+
+.chart-host {
   width: min(94vw, 82vh, 860px);
   flex-shrink: 0;
   aspect-ratio: 1;
 }
 
-.sunburst svg {
+.chart-host svg {
   display: block;
   width: 100%;
   height: 100%;
@@ -81,42 +102,94 @@ body {
   cursor: default;
 }
 
-.sunburst path {
-  stroke: #ffffff;
-  stroke-width: 1px;
+#sunburst path {
+  stroke: #0b0c10;
+  stroke-width: 0.4px;
   stroke-linejoin: round;
   cursor: pointer;
   transition: opacity 0.15s ease;
 }
 
-.sunburst path:hover {
+#sunburst path:hover {
   opacity: 0.9;
 }
 
-.sunburst text {
+#sunburst text {
   pointer-events: none;
-  fill: #f2f4f8;
-  font-size: 9px;
+  fill: #000000;
+  font-size: 9.5px;
   font-family: "Outfit", "Segoe UI", system-ui, sans-serif;
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: 0.01em;
   stroke: none;
+}
+
+#radial .link {
+  fill: none;
+  stroke: rgba(180, 190, 220, 0.35);
+  stroke-width: 1.25px;
+}
+
+#radial .link.is-dim {
+  stroke-opacity: 0.12;
+}
+
+#radial .link.is-active {
+  stroke: rgba(210, 220, 255, 0.85);
+  stroke-width: 2px;
+}
+
+#radial .node circle {
+  cursor: pointer;
+  stroke: #0b0c10;
+  stroke-width: 0.75px;
+  transition: fill-opacity 0.15s ease;
+}
+
+#radial .node circle:hover {
+  fill-opacity: 1;
+}
+
+#radial .node.is-dim circle {
+  fill-opacity: 0.2;
+}
+
+#radial .race-labels text,
+#radial .gender-labels text {
+  pointer-events: none;
+  fill: #e8eaef;
+  font-size: 8px;
+  font-weight: 500;
+}
+
+#radial .node text {
+  pointer-events: none;
+  fill: #e8eaef;
+  font-size: 8px;
+  font-family: "Outfit", "Segoe UI", system-ui, sans-serif;
+  font-weight: 500;
+}
+
+#radial .node.is-dim text {
+  fill-opacity: 0.25;
 }
 
 .caption {
   text-align: center;
   max-width: 28rem;
-  padding: 0.5rem 1rem 2rem;
+  padding: 0.35rem 1rem 0.5rem;
 }
 
-#breadcrumb {
+#breadcrumb,
+#radial-breadcrumb {
   color: #9aa3b5;
   font-size: 0.84rem;
   line-height: 1.45;
   margin-bottom: 0.45rem;
 }
 
-#detail {
+#detail,
+#radial-detail {
   color: #e8eaef;
   font-size: 0.92rem;
   font-weight: 500;

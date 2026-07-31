@@ -24,13 +24,29 @@
         </p>
       </header>
 
-      <div id="sunburst" class="sunburst" aria-label="Zoomable sunburst"></div>
+      <section class="chart-block">
+        <p class="chart-lead">Race → gender → age · hover for details · click to zoom</p>
+        <div id="sunburst" class="chart-host" aria-label="Zoomable sunburst"></div>
+        <div class="caption">
+          <p id="breadcrumb">Race → Gender → Age</p>
+          <p id="detail">Loading…</p>
+          <p class="hint-key">Click a ring to zoom · click the center to zoom out</p>
+        </div>
+      </section>
 
-      <div class="caption">
-        <p id="breadcrumb">Race → Gender → Age</p>
-        <p id="detail">Loading…</p>
-        <p class="hint-key">Click a ring to zoom · click the center to zoom out</p>
-      </div>
+      <section class="chart-block">
+        <p class="chart-lead">
+          Radial tree · race → gender → age · node size = image count
+        </p>
+        <div id="radial" class="chart-host" aria-label="Radial hierarchy tree"></div>
+        <div class="caption">
+          <p id="radial-breadcrumb">Race → Gender → Age</p>
+          <p id="radial-detail">Hover a node</p>
+          <p class="hint-key">
+            Node area ∝ share of dataset · hover for counts and %
+          </p>
+        </div>
+      </section>
     </div>
 
     <script type="module" src="/src/dataViz.js"></script>
