@@ -204,6 +204,26 @@ export function stopSpeaking() {
   window.speechSynthesis?.cancel();
 }
 
+let speechUnlocked = false;
+
+/**
+ * Mobile browsers block speech synthesis until it is first used inside a
+ * user gesture. Call this from a tap/click handler to unlock it.
+ */
+export function unlockSpeech() {
+  if (speechUnlocked || !window.speechSynthesis) return;
+  speechUnlocked = true;
+  try {
+    window.speechSynthesis.resume();
+    const u = new SpeechSynthesisUtterance(" ");
+    u.volume = 0;
+    u.rate = 2;
+    window.speechSynthesis.speak(u);
+  } catch {
+    // best effort — speech will still try on the next real utterance
+  }
+}
+
 /**
  * Continuous "Goodbye user" as a single utterance (while the face dissolves).
  */

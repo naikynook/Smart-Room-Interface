@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { startVoiceWake } from "./voiceWake.js";
-import { speak as speakFn, stopSpeaking as stopSpeakingFn, speakTunnelGoodbye } from "./speechTalk.js";
+import { speak as speakFn, stopSpeaking as stopSpeakingFn, speakTunnelGoodbye, unlockSpeech } from "./speechTalk.js";
 import { startCameraPreview, describeCameraError, wireCameraRetry } from "./camera.js";
 import { takePicture, isPhotoApiConfigured } from "./snapshot.js";
 
@@ -1066,11 +1066,34 @@ function captureFaceExport() {
 
 // Click kept as a fallback if mic / speech isn't available
 if (!EXPORT_FACE) {
-  window.addEventListener("pointerdown", () => {
+  window.addEventListener("pointerdown", (e) => {
+    // First tap unlocks text-to-speech on mobile browsers
+    unlockSpeech();
+    // Taps on UI controls shouldn't toggle the face
+    if (
+      e.target instanceof Element &&
+      e.target.closest(
+        "#photo-popup, #photo-download-corner, #photo-button, .nav-tab, #camera-feed"
+      )
+    ) {
+      return;
+    }
     if (!points) return;
     if (morphTarget > 0.5) sleepAvatar();
     else wakeAvatar();
   });
+
+  // On-screen photo button — the only way to take a picture on phones
+  // (iOS has no speech recognition at all)
+  const photoBtn = document.createElement("button");
+  photoBtn.id = "photo-button";
+  photoBtn.type = "button";
+  photoBtn.textContent = "Take photo";
+  photoBtn.addEventListener("click", () => {
+    unlockSpeech();
+    handleTakePicture();
+  });
+  document.body.appendChild(photoBtn);
 
   window.addEventListener("resize", () => {
     camera.aspect = window.innerWidth / window.innerHeight;

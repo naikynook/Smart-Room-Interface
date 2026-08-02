@@ -21,7 +21,7 @@ export function startVoiceWake({
 
   if (!SpeechRecognition) {
     onStatus?.(
-      "Voice not supported here — try Chrome. Click still toggles the face."
+      "Voice isn't supported in this browser — tap the face to wake it, and use the Take photo button."
     );
     return null;
   }
