@@ -39,7 +39,7 @@ MIN_BOX_FRACTION = 0.002
 ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
-    "https://codynaiker.github.io",
+    "https://naikynook.github.io",
 ]
 
 # Per-visitor rate limit for /analyze

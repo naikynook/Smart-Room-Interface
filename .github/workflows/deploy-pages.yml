@@ -33,6 +33,10 @@ jobs:
 
       - name: Build
         run: npm run build
+        env:
+          # Baked into the frontend bundle at build time (.env.local is not
+          # pushed to GitHub, so the URL must be provided here)
+          VITE_DEEPFACE_API_URL: https://codynaiker--smart-room-deepface-api.modal.run
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
