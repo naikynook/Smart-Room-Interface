@@ -4,12 +4,14 @@
  * Wake:     "hello smart room"
  * Sleep:    "goodbye smart room"
  * See:      "what do you see" / "what can you see"
+ * Photo:    "take a picture" / "take a photo"
  * Download: "download dataset"
  */
 export function startVoiceWake({
   onWake,
   onSleep,
   onSee,
+  onPhoto,
   onDownload,
   onStatus,
   isAwake,
@@ -32,6 +34,7 @@ export function startVoiceWake({
   const WAKE = /\bhello\s+smart\s+room\b/;
   const SLEEP = /\bgood\s*-?\s*bye\s+smart\s+room\b/;
   const SEE = /\bwhat\s+(do\s+you\s+see|can\s+you\s+see|are\s+you\s+seeing)\b/;
+  const PHOTO = /\btake\s+(a\s+|another\s+)?(picture|photo|pic|snapshot)\b/;
   const DOWNLOAD = /\bdownload\s+(the\s+)?dataset\b/;
 
   let lastCommand = "";
@@ -46,9 +49,14 @@ export function startVoiceWake({
       .trim();
   }
 
+  // Per-command cooldown so a growing interim transcript doesn't refire,
+  // but different commands can follow each other immediately
+  const lastFiredAt = {};
+
   function maybeFire(kind, fn) {
     const now = Date.now();
-    if (kind === lastCommand && now - lastAt < 2800) return;
+    if (now - (lastFiredAt[kind] || 0) < 2000) return;
+    lastFiredAt[kind] = now;
     lastCommand = kind;
     lastAt = now;
     fn?.();
@@ -62,23 +70,30 @@ export function startVoiceWake({
     const text = normalize(chunk);
     if (!text) return;
 
-    if (WAKE.test(text)) {
-      maybeFire("wake", onWake);
-      return;
-    }
+    // Check every pattern (no early exits) so back-to-back commands in one
+    // breath — e.g. "hello smart room, take a picture" — all fire
     if (SLEEP.test(text)) {
       maybeFire("sleep", onSleep);
       return;
+    }
+    if (WAKE.test(text)) {
+      maybeFire("wake", onWake);
     }
 
     // Vision / dataset commands — prefer when awake, but allow download anytime
     if (SEE.test(text)) {
       if (isAwake && !isAwake()) {
         onStatus?.('Say "hello smart room" first, then ask what I see.');
-        return;
+      } else {
+        maybeFire("see", onSee);
       }
-      maybeFire("see", onSee);
-      return;
+    }
+    if (PHOTO.test(text)) {
+      if (isAwake && !isAwake()) {
+        onStatus?.('Say "hello smart room" first, then ask for a picture.');
+      } else {
+        maybeFire("photo", onPhoto);
+      }
     }
     if (DOWNLOAD.test(text)) {
       maybeFire("download", onDownload);

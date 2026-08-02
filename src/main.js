@@ -3,26 +3,39 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { startVoiceWake } from "./voiceWake.js";
 import { speak as speakFn, stopSpeaking as stopSpeakingFn, speakTunnelGoodbye } from "./speechTalk.js";
 import { startCameraPreview, describeCameraError, wireCameraRetry } from "./camera.js";
+import { takePicture, isPhotoApiConfigured } from "./snapshot.js";
 
-const PARTICLE_COUNT = 48000;
+const EXPORT_FACE = new URLSearchParams(location.search).has("exportFace");
+const EXPORT_SIZE = 4000;
+const PARTICLE_COUNT = EXPORT_FACE ? 140000 : 48000;
 const FACE_MODEL_URL = `${import.meta.env.BASE_URL}models/LeePerrySmith.glb`;
 
 const container = document.getElementById("canvas-container");
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xffffff);
+scene.background = EXPORT_FACE ? null : new THREE.Color(0xffffff);
 
 const camera = new THREE.PerspectiveCamera(
   45,
-  window.innerWidth / window.innerHeight,
+  EXPORT_FACE ? 1 : window.innerWidth / window.innerHeight,
   0.1,
   100
 );
-camera.position.set(0, 0.05, 3.6);
+camera.position.set(0, 0.04, EXPORT_FACE ? 2.85 : 3.6);
 
-const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+const renderer = new THREE.WebGLRenderer({
+  antialias: true,
+  alpha: EXPORT_FACE,
+  preserveDrawingBuffer: EXPORT_FACE,
+});
+if (EXPORT_FACE) {
+  renderer.setClearColor(0x000000, 0);
+  renderer.setSize(EXPORT_SIZE, EXPORT_SIZE, false);
+  renderer.setPixelRatio(1);
+} else {
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+}
 container.appendChild(renderer.domElement);
 
 // If another lib tries to take WebGL, keep the particle loop alive if possible
@@ -802,6 +815,7 @@ let points = null;
 let morphTarget = 0;
 let morphCurrent = 0;
 let morphLerp = 0.045;
+let exportFrozen = false;
 const clock = new THREE.Clock();
 
 const pointer = { x: 0, y: 0 };
@@ -825,6 +839,9 @@ let talkAmount = 0;
 let talkPulse = 0;
 
 function speakSafely(text) {
+  // Mute the mic while the room talks (so it never hears itself), but
+  // resume immediately when speech ends to minimize the dead window
+  // where a fast follow-up command would be missed.
   voiceControl?.pause();
   isTalking = true;
   talkPulse = 0.25;
@@ -839,7 +856,7 @@ function speakSafely(text) {
     onEnd: () => {
       isTalking = false;
       talkPulse = 0;
-      window.setTimeout(() => voiceControl?.resume(), 350);
+      voiceControl?.resume();
     },
   });
 }
@@ -880,7 +897,7 @@ function wakeAvatar() {
   morphLerp = 0.045;
   setHint(
     visionReady
-      ? 'Awake — ask "what do you see", or say "goodbye smart room"'
+      ? 'Awake — ask "what do you see", say "take a picture", or "goodbye smart room"'
       : "Awake — camera still starting…"
   );
   if (!wasAwake) {
@@ -950,6 +967,53 @@ async function handleWhatDoYouSee() {
   }
 }
 
+let photoBusy = false;
+
+const PHOTO_COUNTDOWN_S = 3;
+
+function sleep(ms) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+async function handleTakePicture() {
+  if (photoBusy) return;
+
+  if (!isPhotoApiConfigured()) {
+    setHint(
+      "Photo API not configured — set VITE_DEEPFACE_API_URL in .env.local and restart the dev server."
+    );
+    speakSafely("The photo service is not set up yet.");
+    return;
+  }
+
+  const video = cameraPreview?.video || document.getElementById("camera-feed");
+  if (!cameraOk || !video?.videoWidth) {
+    const msg = "My camera is not ready yet. Please wait a moment.";
+    setHint(msg);
+    speakSafely(msg);
+    return;
+  }
+
+  photoBusy = true;
+  try {
+    speakSafely("Say cheese!");
+    for (let s = PHOTO_COUNTDOWN_S; s >= 1; s--) {
+      setHint(`Taking a picture in ${s}…`);
+      await sleep(1000);
+    }
+    setHint("Click!");
+    const result = await takePicture(video, { onStatus: setHint });
+    setHint(`${result.summary} · click "Download photo" to save it`);
+    speakSafely(result.summary);
+  } catch (err) {
+    console.error(err);
+    setHint(err?.message || "Photo analysis failed.");
+    speakSafely("I couldn't take the picture just now.");
+  } finally {
+    photoBusy = false;
+  }
+}
+
 function handleDownloadDataset() {
   const n = getDataset().length;
   if (!n) {
@@ -964,26 +1028,65 @@ function handleDownloadDataset() {
   speakSafely(msg);
 }
 
-// Click kept as a fallback if mic / speech isn't available
-window.addEventListener("pointerdown", () => {
-  if (!points) return;
-  if (morphTarget > 0.5) sleepAvatar();
-  else wakeAvatar();
-});
+function captureFaceExport() {
+  if (!points || !EXPORT_FACE) return;
 
-window.addEventListener("resize", () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
+  exportFrozen = true;
+  morphCurrent = 1;
+  morphTarget = 1;
+
+  const mat = points.material;
+  mat.uniforms.uTime.value = 0;
+  mat.uniforms.uMorph.value = 1;
+  mat.uniforms.uTalk.value = 0;
+  // Scale point size for 4000px output (screen path uses ~devicePixelRatio)
+  mat.uniforms.uPixelRatio.value = 4.8;
+
+  points.rotation.set(0, 0, 0);
+  camera.aspect = 1;
   camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  if (points) {
-    points.material.uniforms.uPixelRatio.value = Math.min(
-      window.devicePixelRatio,
-      2
-    );
-  }
-});
+  renderer.setSize(EXPORT_SIZE, EXPORT_SIZE, false);
+  renderer.setClearColor(0x000000, 0);
+  renderer.clear();
+  renderer.render(scene, camera);
+
+  requestAnimationFrame(() => {
+    renderer.render(scene, camera);
+    try {
+      window.__FACE_EXPORT_DATA_URL__ = renderer.domElement.toDataURL("image/png");
+      window.__FACE_EXPORT_READY__ = true;
+      setHint("Face export ready.");
+    } catch (err) {
+      console.error(err);
+      window.__FACE_EXPORT_ERROR__ = String(err);
+      window.__FACE_EXPORT_READY__ = true;
+    }
+  });
+}
+
+// Click kept as a fallback if mic / speech isn't available
+if (!EXPORT_FACE) {
+  window.addEventListener("pointerdown", () => {
+    if (!points) return;
+    if (morphTarget > 0.5) sleepAvatar();
+    else wakeAvatar();
+  });
+
+  window.addEventListener("resize", () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    if (points) {
+      points.material.uniforms.uPixelRatio.value = Math.min(
+        window.devicePixelRatio,
+        2
+      );
+    }
+  });
+}
 
 function animate() {
+  if (exportFrozen) return;
   requestAnimationFrame(animate);
 
   const t = clock.getElapsedTime();
@@ -1028,21 +1131,23 @@ function animate() {
 animate();
 
 // Click the preview to enable/retry camera (works even if auto-start fails)
-wireCameraRetry(document.getElementById("camera-feed"), {
-  onSuccess: (result) => {
-    cameraPreview = result;
-    cameraOk = true;
-    setHint(
-      visionReady
-        ? 'Listening… say "hello smart room" · camera ready'
-        : 'Camera on · loading the rest…'
-    );
-  },
-  onError: (err) => {
-    cameraOk = false;
-    setHint(describeCameraError(err));
-  },
-});
+if (!EXPORT_FACE) {
+  wireCameraRetry(document.getElementById("camera-feed"), {
+    onSuccess: (result) => {
+      cameraPreview = result;
+      cameraOk = true;
+      setHint(
+        visionReady
+          ? 'Listening… say "hello smart room" · camera ready'
+          : 'Camera on · loading the rest…'
+      );
+    },
+    onError: (err) => {
+      cameraOk = false;
+      setHint(describeCameraError(err));
+    },
+  });
+}
 
 // ---------------------------------------------------------------------------
 // Load scan → front face mask → dense surface samples
@@ -1070,9 +1175,18 @@ loader.load(
       );
       points = createParticleSystem(positions, normals, concavities);
       scene.add(points);
+
+      if (EXPORT_FACE) {
+        captureFaceExport();
+        return;
+      }
     } catch (err) {
       console.error(err);
       setHint("Failed to build particle face.");
+      if (EXPORT_FACE) {
+        window.__FACE_EXPORT_ERROR__ = String(err);
+        window.__FACE_EXPORT_READY__ = true;
+      }
       return;
     }
 
@@ -1080,6 +1194,7 @@ loader.load(
       onWake: wakeAvatar,
       onSleep: sleepAvatar,
       onSee: handleWhatDoYouSee,
+      onPhoto: handleTakePicture,
       onDownload: handleDownloadDataset,
       onStatus: voiceStatus,
       isAwake,
@@ -1138,5 +1253,9 @@ loader.load(
   (err) => {
     console.error(err);
     setHint("Failed to load face scan. Check that public/models/LeePerrySmith.glb exists.");
+    if (EXPORT_FACE) {
+      window.__FACE_EXPORT_ERROR__ = String(err);
+      window.__FACE_EXPORT_READY__ = true;
+    }
   }
 );

@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "export:face": "node scripts/export-face-png.mjs"
   },
   "dependencies": {
     "@tensorflow-models/coco-ssd": "^2.2.3",
@@ -16,6 +17,8 @@
     "three": "^0.172.0"
   },
   "devDependencies": {
+    "playwright": "^1.62.1",
+    "sharp": "^0.35.3",
     "vite": "^6.0.0"
   }
 }
