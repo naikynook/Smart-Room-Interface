@@ -24,8 +24,9 @@ function scoreVoice(voice) {
   if (/en(-|_)us/i.test(voice.lang)) score += 30;
 
   // Strongly prefer male voices (closer to the default before voice picking)
+  // Includes Apple's male voices so iPhones pick a similar character
   if (
-    /microsoft david|microsoft mark|microsoft guy|google us english male|google uk english male|\bmale\b|daniel|alex(?!a)|fred|bruce|junior|ralph|tom|james|george|thomas/.test(
+    /microsoft david|microsoft mark|microsoft guy|google us english male|google uk english male|\bmale\b|daniel|alex(?!a)|fred|bruce|junior|ralph|tom|james|george|thomas|aaron|arthur|gordon|rishi|reed/.test(
       name
     )
   ) {

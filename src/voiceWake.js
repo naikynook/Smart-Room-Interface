@@ -19,9 +19,16 @@ export function startVoiceWake({
   const SpeechRecognition =
     window.SpeechRecognition || window.webkitSpeechRecognition;
 
-  if (!SpeechRecognition) {
+  // iOS plays a mandatory system beep every time recognition starts/stops,
+  // and it can't keep a continuous session — so it beeps nonstop. Skip voice
+  // there; tap-to-wake and the Take photo button cover everything.
+  const isIOS =
+    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+  if (!SpeechRecognition || isIOS) {
     onStatus?.(
-      "Voice isn't supported in this browser — tap the face to wake it, and use the Take photo button."
+      "Voice isn't supported here — tap the face to wake it, and use the Take photo button."
     );
     return null;
   }
