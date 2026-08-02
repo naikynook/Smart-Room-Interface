@@ -105,7 +105,6 @@ export function speak(text, { onStart, onWord, onEnd } = {}) {
   window.speechSynthesis.cancel();
 
   const phrases = splitPhrases(text);
-  const voice = pickVoice();
   let index = 0;
   let started = false;
   let cancelled = false;
@@ -132,6 +131,9 @@ export function speak(text, { onStart, onWord, onEnd } = {}) {
 
     const phrase = phrases[index++];
     const utterance = new SpeechSynthesisUtterance(phrase);
+    // Pick per phrase — on iOS the voice list often only becomes available
+    // after speech has been used once, so later phrases can upgrade
+    const voice = pickVoice();
     if (voice) utterance.voice = voice;
     utterance.lang = voice?.lang || "en-US";
 
@@ -219,7 +221,10 @@ export function unlockSpeech() {
     const u = new SpeechSynthesisUtterance(" ");
     u.volume = 0;
     u.rate = 2;
+    // Priming also makes iOS populate its voice list for later speech
+    u.onend = loadVoices;
     window.speechSynthesis.speak(u);
+    loadVoices();
   } catch {
     // best effort — speech will still try on the next real utterance
   }
