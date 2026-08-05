@@ -1,7 +1,7 @@
 /**
  * Immersion mode gallery for projection.
  * 1. Creatures — parametric five-form point cloud (white canvas)
- * 2. Slime     — Patt Vira Physarum (white canvas, blue→purple→pink)
+ * 2. Slime     — Patt Vira Physarum (white canvas, black trails)
  * 3. Noise     — colorful flowing Perlin field (white canvas)
  *
  * Aspect presets letterbox on black: 1:1, 16:9, 21:9, 9:16, or Fill.
@@ -174,62 +174,24 @@ function buildCreatures(host) {
 
 // ---------------------------------------------------------------------------
 // Visual 2 — Slime molds (Physarum)
-// Exact Patt Vira / Jeff Jones sensing on a hidden black trail map;
-// white canvas + blue→purple→pink display colors only.
+// Exact Patt Vira code; white background + black molds.
 // https://p5js.org/sketches/2213463/
 // ---------------------------------------------------------------------------
 function buildSlime(host) {
   const num = 4000;
-  const rotAngle = 45;
+  const rotAngle = 30; // smaller turns = smoother paths
   const sensorAngle = 45;
-  const sensorDist = 10;
-
-  const BLUE = [40, 110, 255];
-  const PURPLE = [150, 70, 230];
-  const PINK = [255, 90, 170];
-
-  function smoothstep(t) {
-    const x = Math.min(1, Math.max(0, t));
-    return x * x * (3 - 2 * x);
-  }
-
-  function lerp3(a, b, t) {
-    const u = smoothstep(t);
-    return [
-      a[0] + (b[0] - a[0]) * u,
-      a[1] + (b[1] - a[1]) * u,
-      a[2] + (b[2] - a[2]) * u,
-    ];
-  }
-
-  // Seamless ring so all three hues stay present: B→Pu→Pi→Pu→B
-  const STOPS = [BLUE, PURPLE, PINK, PURPLE, BLUE];
+  const sensorDist = 14;
+  const moldSpeed = 2.8;
 
   return (p) => {
     let molds = [];
     let d;
     let W = 400;
     let H = 400;
-    let trail; // hidden black/white map — original algorithm senses this
-
-    function trailColor(x, y) {
-      const ang = Math.atan2(y - H * 0.5, x - W * 0.5);
-      const a = (ang + Math.PI) / (Math.PI * 2);
-      const seg = a * (STOPS.length - 1);
-      const i = Math.min(Math.floor(seg), STOPS.length - 2);
-      return lerp3(STOPS[i], STOPS[i + 1], seg - i);
-    }
-
-    function initTrail() {
-      trail = p.createGraphics(W, H);
-      trail.pixelDensity(1);
-      trail.angleMode(p.DEGREES);
-      trail.background(0);
-    }
 
     class Mold {
       constructor() {
-        // Original Patt Vira spawn: tight cluster at center
         this.x = p.random(W / 2 - 20, W / 2 + 20);
         this.y = p.random(H / 2 - 20, H / 2 + 20);
         this.r = 0.5;
@@ -244,8 +206,8 @@ function buildSlime(host) {
       }
 
       update() {
-        this.vx = p.cos(this.heading);
-        this.vy = p.sin(this.heading);
+        this.vx = p.cos(this.heading) * moldSpeed;
+        this.vy = p.sin(this.heading) * moldSpeed;
 
         this.x = (this.x + this.vx + W) % W;
         this.y = (this.y + this.vy + H) % H;
@@ -254,22 +216,26 @@ function buildSlime(host) {
         this.getSensorPos(this.lSensorPos, this.heading - sensorAngle);
         this.getSensorPos(this.fSensorPos, this.heading);
 
-        // Exact tutorial: read red channel of the black/white trail map
-        const px = trail.pixels;
-        let index =
+        let index;
+        let l;
+        let r;
+        let f;
+
+        // Black trails on white: invert so sensors still seek deposited trails
+        index =
           4 * (d * p.floor(this.rSensorPos.y)) * (d * W) +
           4 * (d * p.floor(this.rSensorPos.x));
-        const r = px[index];
+        r = 255 - p.pixels[index];
 
         index =
           4 * (d * p.floor(this.lSensorPos.y)) * (d * W) +
           4 * (d * p.floor(this.lSensorPos.x));
-        const l = px[index];
+        l = 255 - p.pixels[index];
 
         index =
           4 * (d * p.floor(this.fSensorPos.y)) * (d * W) +
           4 * (d * p.floor(this.fSensorPos.x));
-        const f = px[index];
+        f = 255 - p.pixels[index];
 
         if (f > l && f > r) {
           this.heading += 0;
@@ -287,15 +253,8 @@ function buildSlime(host) {
       }
 
       display() {
-        // Deposit white on hidden trail map (what sensors follow)
-        trail.noStroke();
-        trail.fill(255);
-        trail.ellipse(this.x, this.y, this.r * 2, this.r * 2);
-
-        // Colored mark on the white visible canvas
-        const [cr, cg, cb] = trailColor(this.x, this.y);
         p.noStroke();
-        p.fill(cr, cg, cb);
+        p.fill(0);
         p.ellipse(this.x, this.y, this.r * 2, this.r * 2);
       }
 
@@ -305,23 +264,19 @@ function buildSlime(host) {
       }
     }
 
-    function resetMolds() {
-      molds = [];
-      for (let i = 0; i < num; i++) {
-        molds[i] = new Mold();
-      }
-    }
-
     p.setup = () => {
       ({ w: W, h: H } = sizeForHost(host));
       const canvas = p.createCanvas(W, H);
       canvas.parent(host);
       p.angleMode(p.DEGREES);
       p.pixelDensity(1);
+      p.frameRate(60);
       d = p.pixelDensity();
-      initTrail();
       p.background(255);
-      resetMolds();
+      molds = [];
+      for (let i = 0; i < num; i++) {
+        molds[i] = new Mold();
+      }
     };
 
     p.windowResized = () => {
@@ -329,9 +284,11 @@ function buildSlime(host) {
       ({ w: W, h: H } = sizeForHost(host));
       p.resizeCanvas(W, H);
       d = p.pixelDensity();
-      initTrail();
       p.background(255);
-      resetMolds();
+      molds = [];
+      for (let i = 0; i < num; i++) {
+        molds[i] = new Mold();
+      }
     };
 
     p.draw = () => {
@@ -339,12 +296,8 @@ function buildSlime(host) {
         p.noLoop();
         return;
       }
-      // Original trail decay on the hidden map
-      trail.background(0, 5);
-      trail.loadPixels();
-
-      // Matching fade on the white display
-      p.background(255, 5);
+      p.background(255, 4);
+      p.loadPixels();
 
       for (let i = 0; i < num; i++) {
         molds[i].update();
@@ -353,6 +306,7 @@ function buildSlime(host) {
     };
   };
 }
+
 
 // ---------------------------------------------------------------------------
 // Visual 3 — Colorful animated Perlin noise on white
