@@ -174,121 +174,99 @@ function buildCreatures(host) {
 
 // ---------------------------------------------------------------------------
 // Visual 2 — Slime molds (Physarum)
-// Exact Patt Vira code; white background + black molds.
+// Same Patt Vira behavior (white bg, black molds); trail sensing via Uint8
+// buffer + batched pixels to keep frame rate up.
 // https://p5js.org/sketches/2213463/
 // ---------------------------------------------------------------------------
 function buildSlime(host) {
   const num = 4000;
-  const rotAngle = 30; // smaller turns = smoother paths
+  const rotAngle = 30;
   const sensorAngle = 45;
   const sensorDist = 14;
   const moldSpeed = 2.8;
+  const DEG = Math.PI / 180;
+  const cos = Math.cos;
+  const sin = Math.sin;
 
   return (p) => {
     let molds = [];
-    let d;
     let W = 400;
     let H = 400;
+    let trail; // high = trail (same role as white pixels in the tutorial)
 
     class Mold {
       constructor() {
-        this.x = p.random(W / 2 - 20, W / 2 + 20);
-        this.y = p.random(H / 2 - 20, H / 2 + 20);
-        this.r = 0.5;
+        this.x = W * 0.5 + (Math.random() * 40 - 20);
+        this.y = H * 0.5 + (Math.random() * 40 - 20);
+        this.heading = Math.random() * 360;
+      }
 
-        this.heading = p.random(360);
-        this.vx = p.cos(this.heading);
-        this.vy = p.sin(this.heading);
-
-        this.rSensorPos = p.createVector(0, 0);
-        this.lSensorPos = p.createVector(0, 0);
-        this.fSensorPos = p.createVector(0, 0);
+      sense(sx, sy) {
+        const x = ((sx % W) + W) % W | 0;
+        const y = ((sy % H) + H) % H | 0;
+        return trail[y * W + x];
       }
 
       update() {
-        this.vx = p.cos(this.heading) * moldSpeed;
-        this.vy = p.sin(this.heading) * moldSpeed;
+        const rad = this.heading * DEG;
+        this.x = (this.x + cos(rad) * moldSpeed + W) % W;
+        this.y = (this.y + sin(rad) * moldSpeed + H) % H;
 
-        this.x = (this.x + this.vx + W) % W;
-        this.y = (this.y + this.vy + H) % H;
-
-        this.getSensorPos(this.rSensorPos, this.heading + sensorAngle);
-        this.getSensorPos(this.lSensorPos, this.heading - sensorAngle);
-        this.getSensorPos(this.fSensorPos, this.heading);
-
-        let index;
-        let l;
-        let r;
-        let f;
-
-        // Black trails on white: invert so sensors still seek deposited trails
-        index =
-          4 * (d * p.floor(this.rSensorPos.y)) * (d * W) +
-          4 * (d * p.floor(this.rSensorPos.x));
-        r = 255 - p.pixels[index];
-
-        index =
-          4 * (d * p.floor(this.lSensorPos.y)) * (d * W) +
-          4 * (d * p.floor(this.lSensorPos.x));
-        l = 255 - p.pixels[index];
-
-        index =
-          4 * (d * p.floor(this.fSensorPos.y)) * (d * W) +
-          4 * (d * p.floor(this.fSensorPos.x));
-        f = 255 - p.pixels[index];
+        const r = this.sense(
+          this.x + sensorDist * cos((this.heading + sensorAngle) * DEG),
+          this.y + sensorDist * sin((this.heading + sensorAngle) * DEG)
+        );
+        const l = this.sense(
+          this.x + sensorDist * cos((this.heading - sensorAngle) * DEG),
+          this.y + sensorDist * sin((this.heading - sensorAngle) * DEG)
+        );
+        const f = this.sense(
+          this.x + sensorDist * cos(rad),
+          this.y + sensorDist * sin(rad)
+        );
 
         if (f > l && f > r) {
-          this.heading += 0;
+          // keep heading
         } else if (f < l && f < r) {
-          if (p.random(1) < 0.5) {
-            this.heading += rotAngle;
-          } else {
-            this.heading -= rotAngle;
-          }
+          this.heading += Math.random() < 0.5 ? rotAngle : -rotAngle;
         } else if (l > r) {
-          this.heading += -rotAngle;
+          this.heading -= rotAngle;
         } else if (r > l) {
           this.heading += rotAngle;
         }
       }
+    }
 
-      display() {
-        p.noStroke();
-        p.fill(0);
-        p.ellipse(this.x, this.y, this.r * 2, this.r * 2);
+    function fadeTrail() {
+      // Match ~background(..., 4) decay
+      for (let i = 0, n = trail.length; i < n; i++) {
+        const v = trail[i];
+        if (v) trail[i] = (v * 251) >> 8;
       }
+    }
 
-      getSensorPos(sensor, angle) {
-        sensor.x = (this.x + sensorDist * p.cos(angle) + W) % W;
-        sensor.y = (this.y + sensorDist * p.sin(angle) + H) % H;
-      }
+    function resetMolds() {
+      trail = new Uint8Array(W * H);
+      molds = new Array(num);
+      for (let i = 0; i < num; i++) molds[i] = new Mold();
     }
 
     p.setup = () => {
       ({ w: W, h: H } = sizeForHost(host));
       const canvas = p.createCanvas(W, H);
       canvas.parent(host);
-      p.angleMode(p.DEGREES);
       p.pixelDensity(1);
       p.frameRate(60);
-      d = p.pixelDensity();
       p.background(255);
-      molds = [];
-      for (let i = 0; i < num; i++) {
-        molds[i] = new Mold();
-      }
+      resetMolds();
     };
 
     p.windowResized = () => {
       if (!visible) return;
       ({ w: W, h: H } = sizeForHost(host));
       p.resizeCanvas(W, H);
-      d = p.pixelDensity();
       p.background(255);
-      molds = [];
-      for (let i = 0; i < num; i++) {
-        molds[i] = new Mold();
-      }
+      resetMolds();
     };
 
     p.draw = () => {
@@ -296,12 +274,20 @@ function buildSlime(host) {
         p.noLoop();
         return;
       }
+
+      fadeTrail();
       p.background(255, 4);
-      p.loadPixels();
+      p.stroke(0);
+      p.strokeWeight(1.15);
 
       for (let i = 0; i < num; i++) {
-        molds[i].update();
-        molds[i].display();
+        const m = molds[i];
+        m.update();
+        const ix = m.x | 0;
+        const iy = m.y | 0;
+        if (ix < 0 || iy < 0 || ix >= W || iy >= H) continue;
+        trail[iy * W + ix] = 255;
+        p.point(m.x, m.y);
       }
     };
   };
