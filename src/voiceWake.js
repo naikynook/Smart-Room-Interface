@@ -1,17 +1,22 @@
 /**
  * Continuous speech listening via the Web Speech API.
  *
- * Wake:     "hello smart room"
- * Sleep:    "goodbye smart room"
- * See:      "what do you see" / "what can you see"
- * Photo:    "take a picture" / "take a photo"
- * Download: "download dataset"
+ * Wake:      "hello smart room"
+ * Sleep:     "goodbye smart room"
+ * See:       "what do you see" / "what can you see"
+ * Photo:     "take a picture" / "take a photo"
+ * Visuals:   "immersion mode" / "next visual" / "exit immersion mode"
+ * Download:  "download dataset"
  */
 export function startVoiceWake({
   onWake,
   onSleep,
   onSee,
   onPhoto,
+  onCreatures,
+  onCloseCreatures,
+  onNextVisual,
+  onPrevVisual,
   onDownload,
   onStatus,
   isAwake,
@@ -28,7 +33,7 @@ export function startVoiceWake({
 
   if (!SpeechRecognition || isIOS) {
     onStatus?.(
-      "Voice isn't supported here — tap the face to wake it, and use the Take photo button."
+      "Voice isn't supported here — tap the face to wake it, or use the Take photo / Immersion buttons."
     );
     return null;
   }
@@ -42,6 +47,14 @@ export function startVoiceWake({
   const SLEEP = /\bgood\s*-?\s*bye\s+smart\s+room\b/;
   const SEE = /\bwhat\s+(do\s+you\s+see|can\s+you\s+see|are\s+you\s+seeing)\b/;
   const PHOTO = /\btake\s+(a\s+|another\s+)?(picture|photo|pic|snapshot)\b/;
+  const CLOSE_CREATURES =
+    /\b(close|hide|stop|exit)\s+(the\s+)?(immersion(\s+mode)?|visuals?|creatures)\b|\bexit\s+immersion(\s+mode)?\b/;
+  const SHOW_CREATURES =
+    /\bimmersion\s+mode\b|\b(show|open|start|display)\s+(the\s+)?(immersion(\s+mode)?|visuals?|creatures)\b/;
+  const NEXT_VISUAL =
+    /\b(next|another)\s+(visual|visualization|creature)\b|\bcycle\s+(visuals?|creatures)\b/;
+  const PREV_VISUAL =
+    /\b(previous|last|back)\s+(visual|visualization|creature)\b/;
   const DOWNLOAD = /\bdownload\s+(the\s+)?dataset\b/;
 
   let lastCommand = "";
@@ -100,6 +113,27 @@ export function startVoiceWake({
         onStatus?.('Say "hello smart room" first, then ask for a picture.');
       } else {
         maybeFire("photo", onPhoto);
+      }
+    }
+    if (CLOSE_CREATURES.test(text)) {
+      maybeFire("closeCreatures", onCloseCreatures);
+    } else if (NEXT_VISUAL.test(text)) {
+      if (isAwake && !isAwake()) {
+        onStatus?.('Say "hello smart room" first, then say "immersion mode".');
+      } else {
+        maybeFire("nextVisual", onNextVisual);
+      }
+    } else if (PREV_VISUAL.test(text)) {
+      if (isAwake && !isAwake()) {
+        onStatus?.('Say "hello smart room" first, then say "immersion mode".');
+      } else {
+        maybeFire("prevVisual", onPrevVisual);
+      }
+    } else if (SHOW_CREATURES.test(text)) {
+      if (isAwake && !isAwake()) {
+        onStatus?.('Say "hello smart room" first, then say "immersion mode".');
+      } else {
+        maybeFire("creatures", onCreatures);
       }
     }
     if (DOWNLOAD.test(text)) {

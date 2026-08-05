@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Data Visualization — Smart Room</title>
+    <title>Data Visualization - Smart Room</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -13,37 +13,37 @@
     <link rel="stylesheet" href="/src/dataViz.css" />
   </head>
   <body>
-    <a class="back" href="./index.html">← Smart Room</a>
+    <a class="back" href="./index.html">&larr; Smart Room</a>
 
     <div class="stage">
       <header class="page-header">
         <h1>Data Visualization</h1>
         <p class="sub">
           From the Racial Faces in the Wild dataset
-          (<span id="row-count">…</span> images)
+          (<span id="row-count">...</span> images)
         </p>
       </header>
 
       <section class="chart-block">
-        <p class="chart-lead">Race → gender → age · hover for details · click to zoom</p>
+        <p class="chart-lead">Race &gt; gender &gt; age - hover for details - click to zoom</p>
         <div id="sunburst" class="chart-host" aria-label="Zoomable sunburst"></div>
         <div class="caption">
-          <p id="breadcrumb">Race → Gender → Age</p>
-          <p id="detail">Loading…</p>
-          <p class="hint-key">Click a ring to zoom · click the center to zoom out</p>
+          <p id="breadcrumb">Race &gt; Gender &gt; Age</p>
+          <p id="detail">Loading...</p>
+          <p class="hint-key">Click a ring to zoom - click the center to zoom out</p>
         </div>
       </section>
 
       <section class="chart-block">
         <p class="chart-lead">
-          Radial tree · race → gender → age · node size = image count
+          Radial tree - race &gt; gender &gt; age - node size = image count
         </p>
         <div id="radial" class="chart-host" aria-label="Radial hierarchy tree"></div>
         <div class="caption">
-          <p id="radial-breadcrumb">Race → Gender → Age</p>
+          <p id="radial-breadcrumb">Race &gt; Gender &gt; Age</p>
           <p id="radial-detail">Hover a node</p>
           <p class="hint-key">
-            Node area ∝ share of dataset · hover for counts and %
+            Node area scales with share of dataset - hover for counts and %
           </p>
         </div>
       </section>

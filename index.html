@@ -190,6 +190,169 @@
         background: #fff;
         border-color: rgba(0, 0, 0, 0.28);
       }
+
+      #visuals-button {
+        position: fixed;
+        top: 14px;
+        right: 118px;
+        z-index: 20;
+        padding: 0.45rem 0.85rem;
+        border: 1px solid rgba(0, 0, 0, 0.12);
+        border-radius: 6px;
+        background: rgba(255, 255, 255, 0.92);
+        color: #222;
+        font-size: 0.82rem;
+        letter-spacing: 0.02em;
+        cursor: pointer;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+        transition: background 0.15s ease, border-color 0.15s ease;
+      }
+
+      #visuals-button:hover {
+        background: #fff;
+        border-color: rgba(0, 0, 0, 0.28);
+      }
+
+      #fullscreen-button {
+        position: fixed;
+        top: 14px;
+        right: 14px;
+        z-index: 20;
+        padding: 0.45rem 0.85rem;
+        border: 1px solid rgba(0, 0, 0, 0.12);
+        border-radius: 6px;
+        background: rgba(255, 255, 255, 0.92);
+        color: #222;
+        font-size: 0.82rem;
+        letter-spacing: 0.02em;
+        cursor: pointer;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+        transition: background 0.15s ease, border-color 0.15s ease, opacity 0.2s ease;
+      }
+
+      #fullscreen-button:hover {
+        background: #fff;
+        border-color: rgba(0, 0, 0, 0.28);
+      }
+
+      /* Immersive avatar: hide chrome until the cursor moves */
+      body.is-app-fullscreen .nav-tab,
+      body.is-app-fullscreen #visuals-button,
+      body.is-app-fullscreen #photo-button,
+      body.is-app-fullscreen #photo-download-corner,
+      body.is-app-fullscreen #camera-feed,
+      body.is-app-fullscreen .hint {
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.25s ease;
+      }
+
+      body.is-app-fullscreen #fullscreen-button {
+        opacity: 0;
+      }
+
+      body.is-app-fullscreen.show-chrome .nav-tab,
+      body.is-app-fullscreen.show-chrome #visuals-button,
+      body.is-app-fullscreen.show-chrome #photo-button,
+      body.is-app-fullscreen.show-chrome #photo-download-corner.visible,
+      body.is-app-fullscreen.show-chrome #camera-feed,
+      body.is-app-fullscreen.show-chrome .hint,
+      body.is-app-fullscreen.show-chrome #fullscreen-button {
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      #visuals-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 40;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #000000;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.35s ease;
+      }
+
+      #visuals-overlay.visible {
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      .visuals-stage {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #000000;
+      }
+
+      .visuals-stage canvas {
+        display: block;
+        max-width: 100%;
+        max-height: 100%;
+        background: #000;
+      }
+
+      .visuals-chrome {
+        position: absolute;
+        top: 14px;
+        right: 14px;
+        z-index: 2;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        max-width: calc(100vw - 28px);
+        opacity: 1;
+        transition: opacity 0.45s ease;
+        pointer-events: auto;
+      }
+
+      #visuals-overlay.chrome-idle {
+        cursor: none;
+      }
+
+      #visuals-overlay.chrome-idle .visuals-chrome,
+      #visuals-overlay.chrome-idle .visuals-hint {
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .visuals-chrome button {
+        padding: 0.45rem 0.85rem;
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        border-radius: 6px;
+        background: rgba(20, 20, 24, 0.82);
+        color: #f2f2f2;
+        font-size: 0.82rem;
+        letter-spacing: 0.02em;
+        cursor: pointer;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+      }
+
+      .visuals-chrome button:hover {
+        background: rgba(40, 40, 48, 0.95);
+        border-color: rgba(255, 255, 255, 0.4);
+      }
+
+      .visuals-hint {
+        position: absolute;
+        bottom: 1.5rem;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 2;
+        margin: 0;
+        color: rgba(255, 255, 255, 0.55);
+        font-size: 0.85rem;
+        letter-spacing: 0.04em;
+        pointer-events: none;
+        white-space: nowrap;
+        opacity: 1;
+        transition: opacity 0.45s ease;
+      }
     </style>
   </head>
   <body>

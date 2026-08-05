@@ -1,6 +1,6 @@
 ﻿/**
- * RFW hierarchy viz â€” zoomable sunburst + radial cluster tree.
- * Lavender â†’ blue â†’ teal â†’ mint; hierarchy is race â†’ gender â†’ age.
+ * RFW hierarchy viz - zoomable sunburst + radial cluster tree.
+ * Lavender -> blue -> teal -> mint; hierarchy is race -> gender -> age.
  */
 import * as d3 from "d3";
 
@@ -36,7 +36,7 @@ function parseRow(d) {
   };
 }
 
-/** Moderate saturation lavender â†’ blue â†’ teal â†’ mint */
+/** Moderate saturation lavender -> blue -> teal -> mint */
 function sunburstFill(d) {
   const mid = (d.x0 + d.x1) / 2;
   const t = ((mid / (2 * Math.PI)) % 1 + 1) % 1;
@@ -116,7 +116,7 @@ function pathLabel(d) {
     .map((n) => n.data.name)
     .reverse()
     .slice(1);
-  return parts.length ? parts.join(" â†’ ") : "All images";
+  return parts.length ? parts.join(" > ") : "All images";
 }
 
 function chartSize(host) {
@@ -342,8 +342,8 @@ function drawSunburst(hierarchyData) {
 }
 
 /**
- * Radial cluster tree â€” same hierarchy as the sunburst.
- * Depth rings: race â†’ gender â†’ age; all nodes sized by share of dataset.
+ * Radial cluster tree - same hierarchy as the sunburst.
+ * Depth rings: race -> gender -> age; all nodes sized by share of dataset.
  */
 function drawRadialTree(hierarchyData) {
   radialHost.innerHTML = "";
@@ -358,7 +358,7 @@ function drawRadialTree(hierarchyData) {
 
   d3.cluster().size([2 * Math.PI, radius])(root);
 
-  // One scale for every depth: area âˆ share of full dataset (and each other)
+  // One scale for every depth: area ~ share of full dataset (and each other)
   const total = root.value || 1;
   const sizeK = 40;
   function nodeRadius(d) {
@@ -471,19 +471,19 @@ function drawRadialTree(hierarchyData) {
 
     const pct = ((100 * d.value) / total).toFixed(1);
     radialBreadcrumbEl.textContent = pathLabel(d);
-    radialDetailEl.textContent = `${d3.format(",")(d.value)} images Â· ${pct}% of dataset`;
+    radialDetailEl.textContent = `${d3.format(",")(d.value)} images - ${pct}% of dataset`;
   }
 
   function clearHighlight() {
     node.classed("is-dim", false);
     links.classed("is-active", false).classed("is-dim", false);
-    radialBreadcrumbEl.textContent = "Race â†’ Gender â†’ Age";
+    radialBreadcrumbEl.textContent = "Race > Gender > Age";
     radialDetailEl.textContent = "Hover a node";
   }
 }
 
 async function main() {
-  detailEl.textContent = "Loading dataset…";
+  detailEl.textContent = "Loading dataset...";
   try {
     const raw = await d3.csv(DATA_URL, parseRow);
     const rows = raw.filter((d) => d.race && d.gender && d.ageCategory !== "");

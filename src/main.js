@@ -4,6 +4,12 @@ import { startVoiceWake } from "./voiceWake.js";
 import { speak as speakFn, stopSpeaking as stopSpeakingFn, speakTunnelGoodbye, unlockSpeech } from "./speechTalk.js";
 import { startCameraPreview, describeCameraError, wireCameraRetry } from "./camera.js";
 import { takePicture, isPhotoApiConfigured } from "./snapshot.js";
+import {
+  showVisuals,
+  hideVisuals,
+  isVisualsVisible,
+  cycleVisual,
+} from "./visuals.js";
 
 const EXPORT_FACE = new URLSearchParams(location.search).has("exportFace");
 const EXPORT_SIZE = 4000;
@@ -897,7 +903,7 @@ function wakeAvatar() {
   morphLerp = 0.045;
   setHint(
     visionReady
-      ? 'Awake — ask "what do you see", say "take a picture", or "goodbye smart room"'
+      ? 'Awake — ask "what do you see", "immersion mode", "take a picture", or "goodbye smart room"'
       : "Awake — camera still starting…"
   );
   if (!wasAwake) {
@@ -908,6 +914,8 @@ function wakeAvatar() {
 function sleepAvatar() {
   if (!points) return;
   if (morphTarget < 0.5 && !isTalking) return;
+
+  if (isVisualsVisible()) hideVisuals();
 
   voiceControl?.pause();
   stopSpeaking();
@@ -973,6 +981,39 @@ const PHOTO_COUNTDOWN_S = 3;
 
 function sleep(ms) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+function handleShowVisuals() {
+  if (isVisualsVisible()) return;
+  showVisuals();
+  setHint('Immersion mode — tap Next to cycle · say "exit immersion mode" to leave');
+  speakSafely("Immersion mode.");
+}
+
+function handleCloseVisuals() {
+  if (!isVisualsVisible()) return;
+  hideVisuals();
+  setHint(
+    visionReady
+      ? 'Awake — ask "what do you see", "immersion mode", "take a picture", or "goodbye smart room"'
+      : 'Listening… say "hello smart room"'
+  );
+}
+
+function handleNextVisual() {
+  if (!isVisualsVisible()) {
+    handleShowVisuals();
+    return;
+  }
+  cycleVisual(1);
+}
+
+function handlePrevVisual() {
+  if (!isVisualsVisible()) {
+    handleShowVisuals();
+    return;
+  }
+  cycleVisual(-1);
 }
 
 async function handleTakePicture() {
@@ -1073,7 +1114,7 @@ if (!EXPORT_FACE) {
     if (
       e.target instanceof Element &&
       e.target.closest(
-        "#photo-popup, #photo-download-corner, #photo-button, .nav-tab, #camera-feed"
+        "#photo-popup, #photo-download-corner, #photo-button, #visuals-button, #fullscreen-button, #visuals-overlay, .nav-tab, #camera-feed"
       )
     ) {
       return;
@@ -1094,6 +1135,82 @@ if (!EXPORT_FACE) {
     handleTakePicture();
   });
   document.body.appendChild(photoBtn);
+
+  const visualsBtn = document.createElement("button");
+  visualsBtn.id = "visuals-button";
+  visualsBtn.type = "button";
+  visualsBtn.textContent = "Immersion";
+  visualsBtn.addEventListener("click", () => {
+    unlockSpeech();
+    if (isVisualsVisible()) handleCloseVisuals();
+    else handleShowVisuals();
+  });
+  document.body.appendChild(visualsBtn);
+
+  const fullscreenBtn = document.createElement("button");
+  fullscreenBtn.id = "fullscreen-button";
+  fullscreenBtn.type = "button";
+  fullscreenBtn.textContent = "Fullscreen";
+  fullscreenBtn.title = "Fullscreen (F)";
+
+  let chromeTimer = 0;
+  function syncFullscreenUi() {
+    const on = Boolean(document.fullscreenElement);
+    document.body.classList.toggle("is-app-fullscreen", on);
+    fullscreenBtn.textContent = on ? "Exit full" : "Fullscreen";
+    if (on) {
+      document.body.classList.add("show-chrome");
+      window.clearTimeout(chromeTimer);
+      chromeTimer = window.setTimeout(() => {
+        document.body.classList.remove("show-chrome");
+      }, 2200);
+    } else {
+      document.body.classList.remove("show-chrome");
+    }
+  }
+
+  async function toggleAppFullscreen() {
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      } else {
+        await document.documentElement.requestFullscreen();
+      }
+    } catch (err) {
+      console.warn("Fullscreen blocked:", err);
+      setHint("Fullscreen was blocked by the browser — try the Fullscreen button.");
+    }
+  }
+
+  fullscreenBtn.addEventListener("click", () => {
+    unlockSpeech();
+    toggleAppFullscreen();
+  });
+  document.body.appendChild(fullscreenBtn);
+
+  document.addEventListener("fullscreenchange", syncFullscreenUi);
+  document.addEventListener("pointermove", () => {
+    if (!document.fullscreenElement) return;
+    // Don't flash chrome while the visuals overlay owns the screen
+    if (isVisualsVisible()) return;
+    document.body.classList.add("show-chrome");
+    window.clearTimeout(chromeTimer);
+    chromeTimer = window.setTimeout(() => {
+      document.body.classList.remove("show-chrome");
+    }, 2200);
+  });
+
+  window.addEventListener("keydown", (e) => {
+    if (e.key !== "f" && e.key !== "F") return;
+    if (isVisualsVisible()) return;
+    if (
+      e.target instanceof HTMLElement &&
+      /input|textarea|select/i.test(e.target.tagName)
+    ) {
+      return;
+    }
+    toggleAppFullscreen();
+  });
 
   window.addEventListener("resize", () => {
     camera.aspect = window.innerWidth / window.innerHeight;
@@ -1218,6 +1335,10 @@ loader.load(
       onSleep: sleepAvatar,
       onSee: handleWhatDoYouSee,
       onPhoto: handleTakePicture,
+      onCreatures: handleShowVisuals,
+      onCloseCreatures: handleCloseVisuals,
+      onNextVisual: handleNextVisual,
+      onPrevVisual: handlePrevVisual,
       onDownload: handleDownloadDataset,
       onStatus: voiceStatus,
       isAwake,
